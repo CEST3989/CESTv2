@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+    "http://struts.apache.org/dtds/struts-2.0.dtd">
+
+<struts>
+    <!--  Constants -->
+    <constant name="struts.devMode" value="true"/>
+    <constant name="struts.i18n.encoding" value="UTF-8"/>
+    <constant name="struts.action.extension" value="ext"/>
+    <constant name="struts.objectFactory" value="spring"/>
+    <constant name="struts.custom.i18n.resources" value="ApplicationResources,errors"/>
+    <constant name="struts.multipart.maxSize" value="9097152"/>
+    <constant name="struts.ui.theme" value="css_xhtml"/>
+    
+    <constant name="struts.enable.SlashesInActionNames" value="true"/>
+    <constant name="struts.action.excludePattern" value="*ussdService*"/>
+    <constant name="struts.action.excludePattern" value="*appplatform*"/>
+
+    <!-- Configuration for the default package. -->
+    <package name="default" extends="struts-default">
+        
+	</package>
+	
+	
+	 <package name="user" extends="default" namespace="/user" >
+	 	<action name="login" class="com.action.UserAction" method="login">
+	 	 	<result name="login">/jsp/home.jsp</result>
+            <result name="success">/jsp/home.jsp</result>
+            <result name="error">/jsp/login.jsp</result>
+        </action>
+        
+        <action name="viewUsers" class="com.action.UserAction" method="viewUsers">
+	 	 	<result name="success">/jsp/viewUsers.jsp</result>
+            <result name="error">/jsp/login.jsp</result>
+        </action>
+        
+        <action name="addUserForm" class="com.action.UserAction" method="addUserForm">
+	 	 	<result name="success">/jsp/addUserForm.jsp</result>
+        </action>
+        
+        <action name="addUser" class="com.action.UserAction" method="addUser">
+	 	 	<result name="success" type="redirect-action">viewUsers</result>
+        </action>
+        
+        <action name="searchUser" class="com.action.UserAction" method="searchUser">
+	 	 	<result name="success">/jsp/viewUsers.jsp</result>
+        </action>
+
+        <action name="deleteUser" class="com.action.UserAction" method="deleteUser">
+	 	 	<result name="success" type="redirect-action">viewUsers</result>
+        </action>
+        
+        <action name="viewOnMap" class="com.action.UserAction" method="viewOnMap">
+	 	 	<result name="success">/jsp/viewOnMap.jsp</result>
+	 	 	<result name="error">/jsp/home.jsp</result>
+        </action>
+        <!--  Added by Arpit Kumar  -->
+        <action name="viewUserReports" class="com.action.UserAction" method="viewUserReports">
+	 	 	<result name="success">/jsp/viewUsersReports.jsp</result>
+            <result name="error">/jsp/login.jsp</result>
+        </action>
+        
+        <action name="addUserReport" class="com.action.UserAction" method="addUserReport">
+	 	 	<result name="success" type="redirect-action">viewUserReports</result>
+	 	 	<result name="input">/jsp/addUserReportForm.jsp</result>
+        </action>
+        
+        <action name="addUserReportForm" class="com.action.UserAction" method="addUserReportForm">
+	 	 	<result name="success">/jsp/addUserReportForm.jsp</result>
+	 	 	<result name="input">/jsp/addUserReportForm.jsp</result>
+        </action>
+        
+	 </package>
+
+</struts>

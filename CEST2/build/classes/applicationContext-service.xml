@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+            http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+            http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.0.xsd"
+       default-lazy-init="true">
+
+    <!-- =================================================================== -->
+    <!-- AOP: Configuration and Aspects                                      -->
+    <!-- =================================================================== -->
+    <aop:config>
+        <aop:advisor id="userManagerTx" advice-ref="userManagerTxAdvice" pointcut="execution(* *..service.UserManager.*(..))" order="0"/>        
+        <aop:advisor id="userManagerSecurity" advice-ref="userSecurityAdvice" pointcut="execution(* *..service.UserManager.saveUser(..))" order="1"/>
+        <aop:advisor id="managerTx" advice-ref="txAdvice" pointcut="execution(* *..service.*Manager.*(..))" order="2"/>
+    </aop:config>
+    
+    <!-- Enable @Transactional support -->
+    <tx:annotation-driven/>
+    
+    <!-- Enable @AspectJ support -->
+    <aop:aspectj-autoproxy/>
+
+    <!-- Enable @Configured support -->
+    <aop:spring-configured/>
+    
+    <tx:advice id="txAdvice">
+        <tx:attributes>
+            <!-- Read-only commented out to make things easier for end-users -->
+            <!--tx:method name="get*" read-only="true"/-->
+            <tx:method name="*"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <tx:advice id="userManagerTxAdvice">
+        <tx:attributes>
+            <tx:method name="save*" rollback-for="UserExistsException"/>
+        </tx:attributes>
+    </tx:advice>
+    
+    <bean id="userSecurityAdvice" class="com.media.server.service.UserSecurityAdvice"/>
+        
+    <!-- =================================================================== -->
+    <!-- SMS: Sender configuration                             -->
+    <!-- =================================================================== -->
+    <bean id="smsEngine" class="com.media.server.service.SMSEngine">
+        <property name="smsSender" ref="smsSender"/>
+    </bean>
+
+    <bean id="smsSender" class="com.media.server.util.push.HTTPSMSSender">
+        <!-- CSoft SMSC account via HTTP -->
+		<!--  
+		<property name="smscHostURL" value="https://www.csoft.co.uk/sendsms?Username=SMittal.241752&amp;PIN=27448789&amp;SendTo=&lt;receiver&gt;&amp;Message=&lt;text&gt;&amp;ResponseFormat=3"/>
+         -->
+        <property name="smscHostURL" value="http://localhost/sendsms?Username=SMittal.241752&amp;PIN=27448789&amp;SendTo=&lt;receiver&gt;&amp;Message=&lt;text&gt;&amp;ResponseFormat=3"/>
+        
+        <!-- property name="smscHostURL" value="http://localhost:11001/cgi-bin/sendsms?username=user1&amp;password=pass1&amp;priority=&lt;priority&gt;&amp;from=1111&amp;to=&lt;receiver&gt;&amp;text=&lt;text&gt;"/-->    
+    </bean>
+    
+    <!-- =================================================================== -->
+    <!-- Mail: Sender and Velocity configuration                             -->
+    <!-- =================================================================== -->
+    <bean id="mailEngine" class="com.media.server.service.MailEngine">
+        <property name="mailSender" ref="mailSender"/>
+        <property name="velocityEngine" ref="velocityEngine"/>
+        <property name="from" value="${mail.default.from}"/>
+    </bean>
+    
+     
+    
+
+    <bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+        <property name="host" value="${mail.host}"/>
+        <property name="port" value="${mail.port}"/>
+        <property name="defaultEncoding" value="UTF-8"/> 
+        <!-- Uncomment if you need to authenticate with your SMTP Server -->
+        <property name="username" value="${mail.username}"/>
+        <property name="password" value="${mail.password}"/>
+        <property name="javaMailProperties">
+            <value>
+                mail.smtp.auth=true  
+                mail.smtp.starttls.enable=true
+                mail.smtp.quitwait=false 
+            </value>
+	  </property>
+    </bean>
+
+    <!-- Configure Velocity for sending e-mail -->
+    <bean id="velocityEngine" class="org.springframework.ui.velocity.VelocityEngineFactoryBean">
+        <property name="velocityProperties">
+            <props>
+                <prop key="resource.loader">class</prop>
+                <prop key="class.resource.loader.class">
+                    org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader
+                </prop>
+                <prop key="velocimacro.library"></prop>
+            </props>
+        </property>
+    </bean>
+
+    <bean id="mailMessage" class="org.springframework.mail.SimpleMailMessage" scope="prototype">
+        <property name="from" value="${mail.default.from}"/>
+    </bean>
+
+    <!-- =================================================================== -->
+    <!-- Security class from Spring Security - used to configure Password    -->
+    <!-- Encryption in UserManagerImpl. Can override in security.xml.        -->
+    <!-- =================================================================== -->
+    <bean id="passwordEncoder" class="org.springframework.security.providers.encoding.ShaPasswordEncoder"/>
+
+    <!-- =================================================================== -->
+    <!-- Managers: For accessing DAOs                                        -->
+    <!-- =================================================================== -->
+    <bean id="manager" class="com.media.server.service.impl.UniversalManagerImpl">
+        <property name="dao" ref="universalDao"/>
+    </bean>
+    
+    <bean id="lookupManager" class="com.media.server.service.impl.LookupManagerImpl">
+        <property name="lookupDao" ref="lookupDao"/>
+    </bean>
+
+    <bean id="userManager" class="com.media.server.service.impl.UserManagerImpl">
+        <property name="userDao" ref="userDao"/>
+        <property name="passwordEncoder" ref="passwordEncoder"/>
+        <property name="enterpriseDao" ref="enterpriseDao"/>
+        <property name="passwordHistoryDao" ref="passwordHistoryDao"/>
+    </bean>
+
+    <bean id="roleManager" class="com.media.server.service.impl.RoleManagerImpl">
+        <property name="roleDao" ref="roleDao"/>
+    </bean>
+
+    <bean id="subscriberManager" class="com.media.server.service.impl.SubscriberManagerImpl">
+        <property name="subscriberDao" ref="subscriberDao"/>
+        <property name="subscriberHistoryDao" ref="subscriberHistoryDao"/>
+        <property name="subscriberAppUsageDao" ref="subscriberAppUsageDao"/>
+        <property name="tacCodeDao" ref="tacCodeDao"/>
+        <property name="subscriberDeviceInformationDao" ref="subscriberDeviceInformationDao"/>
+        <property name="subscriberDeviceAPNInformationDao" ref="subscriberDeviceAPNInformationDao"/>
+        <property name="subscriberBalanceDao" ref="subscriberBalanceDao"/>
+        <property name="selfCareSubscriberDao" ref="selfCareSubscriberDao"/>
+    </bean> 
+    
+    <bean id="deviceModelManager" class="com.media.server.service.impl.DeviceModelManagerImpl">
+        <property name="deviceModelDao" ref="deviceModelDao"/>
+    </bean>
+    <bean id="offerServiceManager" class="com.media.server.service.impl.OfferServiceManagerImpl">
+        <property name="hubListDao" ref="hubListDao"/>
+        <property name="circleListDao" ref="circleListDao"/>
+        <property name="offerDao" ref="offerDao"/>
+        <property name="hubCircleMappingDao" ref="hubCircleMappingDao"/>
+        <property name="segmentDao" ref="segmentDao"/>
+        <property name="priceCategoryDao" ref="priceCategoryDao"/>
+        <property name="offerCategoryDao" ref="offerCategoryDao"/>
+        <property name="offerCriteriaDao" ref="OfferCriteriaDao"/>
+    </bean>
+    
+    <!-- Test -->
+    <bean id="csrRequestManager" class="com.media.server.service.impl.CustomerRequestManagerImpl">
+        <property name="csrRequestDao" ref="csrRequestDao"/>
+        <property name="vocCategoryDao" ref="vocCategoryDao"/>
+        <!-- <property name="probCategoryDao" ref="probCategoryDao"/>
+        <property name="probSubCategoryDao" ref="probSubCategoryDao"/>
+        <property name="probSelectionDao" ref="probSelectionDao"/>
+        <property name="probSubSelectionDao" ref="probSubSelectionDao"/> -->
+        <property name="knowledgeCategoryDao" ref="knowledgeCategoryDao"/>
+        <property name="knowledgeSubCategoryDao" ref="knowledgeSubCategoryDao"/>
+        <property name="feedbackDao" ref="feedbackDao"/>
+    </bean>
+    
+    
+    <bean id="clientDownloadInfoManager" class="com.media.server.service.impl.ClientDownloadInfoManagerImpl">
+        <property name="clientDownloadInfoDAO" ref="clientDownloadInfoDAO"/>
+        <property name="clientDownloadAppDAO" ref="clientDownloadAppDAO"/>
+        <property name="clientVersionDao" ref="clientVersionDao"></property>
+    </bean>
+
+    <bean id="pushNotificationServiceManager" class="com.media.server.service.impl.PushNotificationServiceManagerImpl">
+        <property name="pushNotificationDao" ref="pushNotificationDao"/>
+    </bean>
+    
+    <bean id="dBConfigManager" class="com.media.server.service.impl.DBConfigManagerImpl">
+        <property name="licenseDao" ref="licenseDao"/>
+        <!-- <property name="dBConfigDao" ref="dBConfigDao"/> -->
+    </bean>
+
+    <bean id="passwordServiceManager" class="com.media.server.service.impl.PasswordServiceManagerImpl">
+        <property name="passwordManagerSubscriberDao" ref="passwordManagerSubscriberDao"/>
+        <property name="templateDao" ref="templateDao"/>
+        <property name="passwordManagerSubscriberHistoryDao" ref="passwordManagerSubscriberHistoryDao"/>
+        <property name="passwordManagerSubscriberPurgeHistoryDao" ref="passwordManagerSubscriberPurgeHistoryDao"/>
+        <property name="passwordManagerPurgeDao" ref="passwordManagerPurgeDao"/>
+    </bean>
+ 
+    <bean id="appLaunchService" class="com.media.server.api.selfcare.v2.service.impl.ApplicationStartupLaunchImpl">
+    	<property name="clientDownloadInfoManager" ref="clientDownloadInfoManager"/>
+    </bean>
+ 
+    <bean id="discoveryService" class="com.media.server.api.selfcare.v2.service.impl.DiscoveryServiceImpl" />
+
+    <bean id="csrServiceManager" class="com.media.server.service.impl.CSRServiceManagerImpl">
+        <property name="csrTaskDao" ref="csrTaskDao"/>
+        <property name="csrQuestionDao" ref="csrQuestionDao"/>
+        <property name="csrSubscriberDao" ref="csrSubscriberDao"/>
+        <property name="csrSubscriberTaskDao" ref="csrSubscriberTaskDao"/>
+        <property name="csrSubscriberQuestionAnswerDao" ref="csrSubscriberQuestionAnswerDao"/>
+        <property name="csrSubscriberQAContentDao" ref="csrSubscriberQAContentDao"/>
+    </bean>
+    
+    <!-- External Customer Deployment Integration: 
+         Should be changed to implement BillingService in customer deployment.
+    --> 
+    <!-- SelfCareUserService (Registration/Preference/Notification) Integration: 
+    See interface com.media.server.api.selfcare.v2.service.SelfCareUserService -->   
+    <bean id="selfCareUserService" class="com.media.server.api.selfcare.v2.service.impl.SelfCareUserServiceDefaultImpl">
+    </bean>
+
+    <bean id="ivrAction" class="com.media.server.ivr.action.IVRAction">
+    </bean>
+    
+    <!-- Account/Billing Integration: See interface com.media.server.api.selfcare.v2.service.AccountService --> 
+	<!-- SpecialService (Offer/Manage Service/Service Request) Integration: See interface com.media.server.api.selfcare.v2.service.SpecialService --> 
+
+    <bean id="authenticationService" class="com.media.server.api.selfcare.v2.service.impl.AuthenticationServiceDefaultImpl">
+        <property name="subscriberManager" ref="subscriberManager"/>
+    </bean>
+	
+    <bean id="specialService" class="com.media.server.api.selfcare.v2.service.impl.SpecialServiceDefaultImpl">
+    	<property name="offerServiceManager" ref="offerServiceManager"/>
+    </bean>  
+   
+    <!--  <bean id="specialService" class="com.media.server.api.selfcare.v2.service.impl.SpecialServiceDefaultImpl">
+    	<property name="offerServiceManager" ref="offerServiceManager"/>
+    </bean>   -->
+   
+   
+    
+	<!-- Start:Default >
+    <<bean id="specialService" class="com.media.server.api.selfcare.v2.service.impl.africa.madagascar.SpecialServiceMadagascarImpl">
+    	<property name="offerServiceManager" ref="offerServiceManager"/>
+
+    </bean>  
+    <End:Default -->  
+
+    <!-- Start:Default >
+    <bean id="accountService" class="com.media.server.api.selfcare.v2.service.impl.AccountServiceDefaultImpl">
+    </bean>
+    <End:Default -->        
+    
+    <!-- Start:Vodafone Selfcare >
+    <bean id="accountService" class="com.media.server.api.selfcare.v2.service.impl.vodafone.AccountServiceVodafoneImpl">
+    </bean>
+        
+    <bean id="specialService" class="com.media.server.api.selfcare.v2.service.impl.vodafone.SpecialServiceVodafoneImpl">
+    	<property name="offerServiceManager" ref="offerServiceManager"/>
+    </bean>  
+    <bean id="authenticationService" class="com.media.server.api.selfcare.v2.service.impl.vodafone.AuthenticationServiceVodafoneImpl">
+        <property name="subscriberManager" ref="subscriberManager"/>
+    </bean>
+    <End:Vodafone Selfcare -->
+    
+    <!-- Start:Airtel Africa Selfcare >
+    <bean id="accountService" class="com.media.server.api.selfcare.v2.service.impl.africa.AccountServiceAfricaImpl">
+    </bean>
+        
+    <bean id="specialService" class="com.media.server.api.selfcare.v2.service.impl.africa.SpecialServiceAfricaImpl">
+    	<property name="offerServiceManager" ref="offerServiceManager"/>
+    </bean>  
+    <End:Vodafone Selfcare -->
+    
+    <!-- Start:Vodafone Password Manager >
+    <bean id="accountService" class="com.media.server.api.selfcare.v2.service.impl.vodafonepasswordmanager.AccountServicePasswordManagerImpl">
+        <property name="passwordServiceManager" ref="passwordServiceManager"/>
+        <property name="subscriberManager" ref="subscriberManager"/>
+    </bean>
+        
+    <bean id="specialService" class="com.media.server.api.selfcare.v2.service.impl.vodafonepasswordmanager.SpecialServicePasswordManagerImpl">
+    	<property name="passwordServiceManager" ref="passwordServiceManager"/>
+    </bean>  
+    <bean id="authenticationService" class="com.media.server.api.selfcare.v2.service.impl.vodafonepasswordmanager.AuthenticationServicePasswordManagerImpl">
+        <property name="subscriberManager" ref="subscriberManager"/>
+    </bean>
+    <End:Vodafone Password Manager -->
+    
+    <bean id="wurflHolder" class="net.sourceforge.wurfl.core.GeneralWURFLEngine">
+		<!--constructor-arg index="0" value="classpath:/web_browsers_patch.xml" /-->
+		<constructor-arg index="0" value="classpath:/wurfl.zip" />
+		<!-- <constructor-arg index="1" value="<< patch here >>"/> -->
+		<!-- <constructor-arg index="2" value="<< more patches here >>"/> -->
+	</bean>
+
+    <bean id="campaignServiceManager" class="com.media.server.service.impl.CampaignServiceManagerImpl">
+		<property name="campaignDao" ref="campaignDao"/>
+    </bean>
+    <!-- 
+    <bean class="com.media.server.api.selfcare.v2.config.JAXBContextResolver"/>
+    -->
+    <bean id="vasServiceManager" class="com.media.server.service.impl.VASServiceManagerImpl">
+        <property name="vasDao" ref="vasDao"/>
+    </bean>
+    
+    <bean id="ncellOfferServiceManager" class="com.media.server.service.impl.NCELLOfferServiceManagerImpl">
+        <property name="ncellOfferDao" ref="ncellOfferDao"/>
+        <property name="msisdnOfferMappingDao" ref="msisdnOfferMappingDao"></property>
+    </bean>
+    
+    <bean id="bannerServiceManager" class="com.media.server.service.impl.BannerServiceManagerImpl">
+        <property name="bannerDao" ref="bannerDao"/>
+    </bean>
+    
+    <bean id="ncellDataPlanServiceManager" class="com.media.server.service.impl.NCELLDataPlanServiceManagerImpl">
+        <property name="ncellDataPlanDao" ref="ncellDataPlanDao"/>
+    </bean>
+    
+     <bean id="tariffPlanServiceManager" class="com.media.server.service.impl.TariffPlanServiceManagerImpl">
+        <property name="tariffPlanDao" ref="tariffPlanDao"/>
+    </bean>
+    
+     <bean id="posLocationServiceManager" class="com.media.server.service.impl.PosLocationServiceManagerImpl">
+        <property name="posLocationDao" ref="posLocationDao"/>
+    </bean>
+    
+    <bean id="mainProductServiceManager" class="com.media.server.service.impl.MainProductServiceManagerImpl">
+        <property name="mainProductDao" ref="mainProductDao"/>
+    </bean>
+    
+    <bean id="vasProductMappingServiceManager" class="com.media.server.service.impl.VasProductMappingServiceManagerImpl">
+        <property name="vasProductMappingDao" ref="vasProductMappingDao"/>
+    </bean>
+    
+    <bean id="dataPlanCacheServiceManager" class="com.media.server.service.impl.DataPlanCacheServiceManagerImpl">
+        <property name="dataPlanCacheDao" ref="dataPlanCacheDao"/>
+    </bean>
+    
+    <bean id="profileServiceManager" class="com.media.server.service.impl.ProfileServiceManagerImpl">
+        <property name="profileDao" ref="profileDao"/>
+    </bean>
+    
+    <bean id="notificationsServiceManager" class="com.media.server.service.impl.NotificationsServiceManagerImpl">
+    	<property name="notificationsDao" ref="notificationsDao"/>
+    </bean>
+    
+    <bean id="msisdnMappingServiceManager" class="com.media.server.service.impl.MSISDNMappingServiceManagerImpl">
+        <property name="msisdnMappingDao" ref="msisdnMappingDao"/>
+        <property name="secondaryAccountDao" ref="secondaryAccountDao"/>
+    </bean>
+    
+    <bean id="posLocationService" class="com.media.server.api.selfcare.v2.service.impl.vodafone.PosLocationServiceVodafoneImpl" >
+        <property name="posLocationServiceManager" ref="posLocationServiceManager"/>
+    </bean>
+  
+  	<bean id="igh" class="com.media.server.async.vodafone.server.service.RunIGH" scope="singleton">
+  	</bean>
+    
+    <bean id="customLdapAuthProvider" class="org.springframework.security.ldap.authentication.LdapAuthenticationProvider">
+	    <constructor-arg>
+	    	
+	        <bean class="org.springframework.security.ldap.authentication.BindAuthenticator">
+	            <constructor-arg ref="ldapServer"/>
+	            <property name="userDnPatterns">
+	                <list>
+	                    <value>uid={0}</value>
+	                </list>
+	            </property>
+	        </bean>
+	    </constructor-arg>
+	    <constructor-arg>
+        <bean id="authorities" class="com.media.server.dao.hibernate.MyLDAPAuthorities">
+        </bean>
+    </constructor-arg>
+	</bean>
+	
+	<bean id="promotionServiceManager" class="com.media.server.service.impl.PromotionServiceManagerImpl">
+	  <property name="promotionDao" ref="promotionDao"/>	
+	
+	</bean>
+    
+	<bean id="greetingService" class="com.media.server.api.selfcare.v2.service.impl.GreetingServiceDefaultImpl">
+	</bean>
+    
+    <bean id="AppRequestHandler" class="com.media.server.api.selfcare.v2.util.AppRequestHandler">
+	</bean>
+    
+ 
+    <!-- Add new Managers here -->
+</beans>

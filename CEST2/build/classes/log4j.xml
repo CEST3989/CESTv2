@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+
+    <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{yyyy MMM dd HH:mm:ss} %5p [%t] %c{1} | %m%n"/>
+            <!-- For detailed debug output <param name="ConversionPattern" value="%d{yyyy MMM dd HH:mm:ss} %5p [%t] %c{1}.%M(%L) | %m%n"/> -->
+        </layout>
+    </appender>
+    
+     <appender name="LOCAL-FILE" class="org.apache.log4j.rolling.RollingFileAppender">
+     
+        <rollingPolicy class="org.apache.log4j.rolling.TimeBasedRollingPolicy">
+            <param name="activeFileName" value="D:/home/CIMamitt/msc/log/mcare.log"/>
+            <param name="fileNamePattern" value="D:/home/CIMamitt/msc/log/mcare.%d{yyyy-MM-dd-a}.log.gz"/>
+        </rollingPolicy>
+        <layout class="org.apache.log4j.PatternLayout">
+                <param name="ConversionPattern" value="%d{yyyy MMM dd HH:mm:ss} %5p [%t] %c{1} | %X{request-id}:%X{msisdn}:%X{M0}:%X{M1}:%X{M2} | %m%n"/>
+            <!-- For detailed debug output <param name="ConversionPattern" value="%d{yyyy MMM dd HH:mm:ss} %5p [%t] %c{1}.%M(%L) | %m%n"/> -->
+        </layout>
+    </appender>
+    
+    
+    <appender name="FILE" class="org.apache.log4j.rolling.RollingFileAppender">
+        <rollingPolicy class="org.apache.log4j.rolling.TimeBasedRollingPolicy">
+            <param name="activeFileName" value="/usr/local/tomcat/webapps/www.cest-lko.in/log/cest_app.log"/>
+            <param name="fileNamePattern" value="/usr/local/tomcat/webapps/www.cest-lko.in/log/cest_app.%d{yyyy-MM-dd}.log"/>
+        </rollingPolicy>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{yyyy MMM dd HH:mm:ss} %5p [%t] %c{1} | %m%n"/>
+            <!-- For detailed debug output <param name="ConversionPattern" value="%d{yyyy MMM dd HH:mm:ss} %5p [%t] %c{1}.%M(%L) | %m%n"/> -->
+        </layout>
+    </appender>
+    
+    <root>
+        <level value="DEBUG"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="CONSOLE"/>
+     
+    </root>
+
+</log4j:configuration>
